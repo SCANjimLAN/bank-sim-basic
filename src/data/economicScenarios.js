@@ -1,0 +1,86 @@
+// src/data/economicScenarios.js
+
+const economicScenarios = [
+  {
+    quarter: 'Q1 2025',
+    gdpGrowth: 2.1,
+    inflation: 3.2,
+    interestRate: 4.0,
+    riskEnvironment: 'Neutral',
+    commentary: 'Inflation cooling, moderate GDP growth. Stable interest rates provide room for cautious optimism.',
+  },
+  {
+    quarter: 'Q2 2025',
+    gdpGrowth: 1.9,
+    inflation: 2.9,
+    interestRate: 4.0,
+    riskEnvironment: 'Stable',
+    commentary: 'Economic expansion continues. Credit markets are functioning normally.',
+  },
+  {
+    quarter: 'Q3 2025',
+    gdpGrowth: -0.8,
+    inflation: 3.5,
+    interestRate: 4.2,
+    riskEnvironment: 'Stressed',
+    commentary: 'Unexpected recession fears trigger volatility. Watch asset quality.',
+  },
+  {
+    quarter: 'Q4 2025',
+    gdpGrowth: -1.2,
+    inflation: 4.0,
+    interestRate: 4.8,
+    riskEnvironment: 'Constrained',
+    commentary: 'Funding markets tighten. Capital preservation becomes key.',
+  },
+  {
+    quarter: 'Q1 2026',
+    gdpGrowth: 0.5,
+    inflation: 3.1,
+    interestRate: 4.4,
+    riskEnvironment: 'Uncertain',
+    commentary: 'Monetary easing possible. Lenders reassess exposure and pricing.',
+  },
+  {
+    quarter: 'Q2 2026',
+    gdpGrowth: 2.4,
+    inflation: 2.6,
+    interestRate: 4.1,
+    riskEnvironment: 'Rebounding',
+    commentary: 'Recovery takes shape. Loan demand rebounds.',
+  },
+  {
+    quarter: 'Q3 2026',
+    gdpGrowth: 3.0,
+    inflation: 2.2,
+    interestRate: 3.8,
+    riskEnvironment: 'Favorable',
+    commentary: 'Strong growth and healthy margins. Risk appetite increases.',
+  },
+  {
+    quarter: 'Q4 2026',
+    gdpGrowth: 3.3,
+    inflation: 2.1,
+    interestRate: 3.5,
+    riskEnvironment: 'Expansionary',
+    commentary: 'Ideal environment for measured expansion.',
+  },
+  {
+    quarter: 'Q1 2027',
+    gdpGrowth: 0.8,
+    inflation: 2.9,
+    interestRate: 3.7,
+    riskEnvironment: 'Cautious',
+    commentary: 'Some overheating signals. Regulators raise concerns.',
+  },
+  {
+    quarter: 'Q2 2027',
+    gdpGrowth: -1.5,
+    inflation: 4.7,
+    interestRate: 5.0,
+    riskEnvironment: 'High Stress',
+    commentary: 'Stagflation scenario begins. Lending becomes dangerous.',
+  },
+];
+
+export default economicScenarios;
