@@ -1,48 +1,85 @@
-// logic/financialEngine.js
+export function applyQuarterUpdate(state, decisions, scenario) {
+  const last = state.history[state.history.length - 1];
 
-export function applyQuarterUpdate({ currentQuarter, history }, decisions, scenario) {
-  const last = history[history.length - 1];
-  const interestRate = Math.max(0.25, last.interestRate + decisions.rateChange + scenario.interestDrift);
+  // Base numbers
+  let capital = last.capital;
+  let loans = last.loans;
+  let deposits = last.deposits;
+  let interestRate = last.interestRate + decisions.rateChange;
+  let operatingCostRatio = last.operatingCostRatio;
+  let provisionRatio = last.provisionRatio;
+  let riaFeeIncome = last.riaFeeIncome;
+  let tier1 = last.tier1;
 
-  // Business line revenue
-  const wmMargin = decisions.newLine === 'Wealth Management' ? 0.15 : 0;
-  const merchantCapitalDrain = decisions.newLine === 'Merchant Banking' ? 1 : 0;
-  const invBankFeeBoost = decisions.newLine === 'Investment Banking' ? 0.5 : 0;
+  // Adjustments
+  const expansionEffect = decisions.expansion === 'yes' ? 1.05 : 1.0;
+  const riskEffect = decisions.riskTolerance === 'loosen' ? 1.08 : decisions.riskTolerance === 'tighten' ? 0.95 : 1.0;
+  const loanGrowth = 1.02 * expansionEffect * riskEffect;
+  const depositGrowth = 1.01 * expansionEffect;
 
-  const revenue = (last.loans * interestRate * 0.01) + 1.5 + invBankFeeBoost;
-  const expenses = (last.deposits * 0.01) + (last.loans * (last.operatingCostRatio / 100)) + merchantCapitalDrain;
-  const provisions = last.loans * (last.provisionRatio / 100);
-  const netIncome = revenue - expenses - provisions + (last.riaFeeIncome || 0) + (last.capital * wmMargin);
+  // Update values
+  loans *= loanGrowth;
+  deposits *= depositGrowth;
 
-  const capital = Math.max(0, last.capital + netIncome - (merchantCapitalDrain || 0));
-  const tier1 = parseFloat(((capital / last.loans) * 100).toFixed(2));
-  const roe = parseFloat(((netIncome / capital) * 100).toFixed(2));
+  // New business line revenue
+  let businessLineIncome = 0;
+  if (decisions.newLine === 'Wealth Management') businessLineIncome = 0.5;
+  if (decisions.newLine === 'Investment Banking') businessLineIncome = 0.75;
+  if (decisions.newLine === 'Merchant Banking') businessLineIncome = 0.6;
 
-  const year = 2025 + Math.floor((currentQuarter + 1) / 4);
+  const interestIncome = (loans * (interestRate / 100)) / 4;
+  const interestExpense = (deposits * ((interestRate - 1) / 100)) / 4;
+  const feeIncome = riaFeeIncome + businessLineIncome;
+  const revenue = interestIncome - interestExpense + feeIncome;
+
+  const expenses = (operatingCostRatio / 100) * revenue;
+  const provisions = (provisionRatio / 100) * loans;
+
+  const netIncome = revenue - expenses - provisions;
+  capital += netIncome;
+  tier1 = (capital / riskWeight(loans)) * 100;
+  const roe = (netIncome / capital) * 100;
+
+  const feedback = generateFeedback(netIncome, roe, tier1);
+  const scenarioNotes = scenario.shock || '';
 
   return {
-    year,
-    capital: parseFloat(capital.toFixed(2)),
-    loans: last.loans + (decisions.expansion === 'yes' ? 5 : 0),
-    deposits: last.deposits + 3,
-    interestRate: parseFloat(interestRate.toFixed(2)),
-    operatingCostRatio: last.operatingCostRatio,
-    provisionRatio: last.provisionRatio,
-    riaFeeIncome: last.riaFeeIncome + (decisions.newLine === 'Wealth Management' ? 0.3 : 0),
-    tier1,
-    roe,
-    netIncome: parseFloat(netIncome.toFixed(2)),
-    revenue: parseFloat(revenue.toFixed(2)),
-    expenses: parseFloat(expenses.toFixed(2)),
-    provisions: parseFloat(provisions.toFixed(2)),
-    boardFeedback: generateBoardFeedback(roe, tier1),
-    scenarioNotes: scenario.shock ? scenario.shockImpact : ''
+    year: 2025 + Math.floor((state.currentQuarter + 1) / 4),
+    capital: round(capital),
+    loans: round(loans),
+    deposits: round(deposits),
+    interestRate: round(interestRate),
+    operatingCostRatio,
+    provisionRatio,
+    riaFeeIncome: round(riaFeeIncome + businessLineIncome),
+    tier1: round(tier1),
+    roe: round(roe),
+    netIncome: round(netIncome),
+    revenue: round(revenue),
+    expenses: round(expenses),
+    provisions: round(provisions),
+    boardFeedback: feedback,
+    scenarioNotes,
   };
 }
 
-function generateBoardFeedback(roe, tier1) {
-  if (roe > 12 && tier1 > 12) return "Excellent performance — ROE and capital strong. Keep this momentum.";
-  if (roe < 4) return "Profitability is weak. Board suggests reassessing risk or operating costs.";
-  if (tier1 < 8) return "Tier 1 capital is under pressure. Consider reducing loan growth or raising capital.";
-  return "Performance is steady. Continue monitoring margins and capital trends.";
+function riskWeight(loans) {
+  return loans * 0.65;
+}
+
+function round(x) {
+  return Math.round(x * 10) / 10;
+}
+
+function generateFeedback(income, roe, tier1) {
+  if (roe > 12 && tier1 > 10) {
+    return "Exceptional quarter — profitability is strong and capital ratios are healthy.";
+  }
+  if (roe < 5) {
+    return "Profitability is concerningly low. The board is watching closely.";
+  }
+  if (tier1 < 8) {
+    return "Capital ratios are dangerously low. Regulatory pressure may follow.";
+  }
+  return "Performance was solid. Consider balancing growth and risk management.";
 }
