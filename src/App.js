@@ -18,30 +18,32 @@ export default function App() {
   const [feedback, setFeedback] = useState('');
   const [scenario, setScenario] = useState(null);
 
-  // Auto-load from localStorage
   useEffect(() => {
-    const saved = localStorage.getItem('bankSim');
+    const saved = localStorage.getItem('bankSimSave');
     if (saved) {
-      const data = JSON.parse(saved);
-      setUsername(data.username);
+      const { user, quarter, decisions, financials } = JSON.parse(saved);
+      setUsername(user);
+      setCurrentQuarter(quarter);
+      setDecisions(decisions);
+      setFinancials(financials);
+      setScenario(generateScenario(quarter));
       setIsLoggedIn(true);
-      setFinancials(data.financials);
-      setCurrentQuarter(data.currentQuarter);
-      setDecisions(data.decisions);
-      setScenario(data.scenario);
-      setFeedback(data.feedback);
     }
   }, []);
 
-  // Auto-save on update
   useEffect(() => {
     if (isLoggedIn) {
       localStorage.setItem(
-        'bankSim',
-        JSON.stringify({ username, isLoggedIn, currentQuarter, decisions, financials, scenario, feedback })
+        'bankSimSave',
+        JSON.stringify({
+          user: username,
+          quarter: currentQuarter,
+          decisions,
+          financials,
+        })
       );
     }
-  }, [username, isLoggedIn, currentQuarter, decisions, financials, scenario, feedback]);
+  }, [isLoggedIn, currentQuarter, decisions, financials]);
 
   const handleLogin = () => {
     if (!username) return;
@@ -66,9 +68,6 @@ export default function App() {
     setFinancials([initial]);
   };
 
-  const handleDecisionChange = (field, value) => {
-    setDecisions(prev => ({ ...prev, [field]: value }));
-  };
   const advanceQuarter = () => {
     const nextIndex = currentQuarter + 1;
     const nextScenario = generateScenario(nextIndex);
@@ -85,6 +84,10 @@ export default function App() {
     setScenario(nextScenario);
     setFeedback(newData.feedback);
     setCurrentQuarter(nextIndex);
+  };
+
+  const handleDecisionChange = (field, value) => {
+    setDecisions(prev => ({ ...prev, [field]: value }));
   };
 
   if (!isLoggedIn) {
@@ -115,7 +118,6 @@ export default function App() {
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       <div className="border p-4 rounded shadow space-y-2">
         <h2 className="text-2xl font-semibold">{scenario?.quarter}</h2>
-        <p className="text-sm italic text-red-600">{scenario?.shock}</p>
         <p className="text-sm">{scenario?.narrative}</p>
       </div>
 
@@ -180,11 +182,13 @@ export default function App() {
               min="30"
               max="80"
               value={decisions.operatingCostRatio}
-              onChange={(e) => handleDecisionChange('operatingCostRatio', parseFloat(e.target.value))}
+              onChange={(e) =>
+                handleDecisionChange('operatingCostRatio', parseFloat(e.target.value))
+              }
             />
           </div>
           <div>
-            <label className="block">Provision for Loan Losses (%)</label>
+            <label className="block">Loan Provision Ratio (%)</label>
             <input
               className="border p-2 w-full"
               type="number"
@@ -192,7 +196,9 @@ export default function App() {
               max="5"
               step="0.1"
               value={decisions.provisionRatio}
-              onChange={(e) => handleDecisionChange('provisionRatio', parseFloat(e.target.value))}
+              onChange={(e) =>
+                handleDecisionChange('provisionRatio', parseFloat(e.target.value))
+              }
             />
           </div>
         </div>
@@ -213,9 +219,6 @@ export default function App() {
           <li>Interest Rate: {latest.interestRate}%</li>
           <li>Operating Ratio: {latest.operatingCostRatio}%</li>
           <li>Provision Ratio: {latest.provisionRatio}%</li>
-          <li>Revenue: ${latest.revenue}M</li>
-          <li>Expenses: ${latest.expenses}M</li>
-          <li>Provisions: ${latest.provisions}M</li>
           <li>RIA Fee Income: ${latest.riaFeeIncome}M</li>
           <li>Tier 1 Ratio: {latest.tier1}%</li>
           <li>ROE: {latest.roe}%</li>
@@ -226,6 +229,40 @@ export default function App() {
           <p className="text-sm">{feedback}</p>
         </div>
       </div>
+
+      {financials.length > 1 && (
+        <div className="border p-4 rounded shadow space-y-2">
+          <h3 className="text-xl font-semibold">Quarter-over-Quarter Comparison</h3>
+          <table className="w-full text-sm border-collapse">
+            <thead>
+              <tr className="border-b">
+                <th className="text-left">Metric</th>
+                <th className="text-left">Previous Q</th>
+                <th className="text-left">Current Q</th>
+                <th className="text-left">Change</th>
+              </tr>
+            </thead>
+            <tbody>
+              {['capital', 'loans', 'deposits', 'netIncome', 'roe'].map((key) => {
+                const prev = financials[financials.length - 2];
+                const curr = financials[financials.length - 1];
+                const delta = curr[key] - prev[key];
+                const isPercent = key === 'roe';
+                return (
+                  <tr key={key} className="border-t">
+                    <td className="capitalize">{key}</td>
+                    <td>{isPercent ? `${prev[key]}%` : `$${prev[key]}M`}</td>
+                    <td>{isPercent ? `${curr[key]}%` : `$${curr[key]}M`}</td>
+                    <td className={delta >= 0 ? 'text-green-600' : 'text-red-600'}>
+                      {isPercent ? `${delta.toFixed(1)}%` : `$${delta.toFixed(1)}M`}
+                    </td>
+                  </tr>
+                );
+              })}
+            </tbody>
+          </table>
+        </div>
+      )}
 
       <div className="border p-4 rounded shadow">
         <h3 className="text-xl font-semibold mb-2">Historical Financials</h3>
