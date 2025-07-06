@@ -41,9 +41,14 @@ function App() {
     const nextScenario = generateScenario(nextQuarter);
     const prev = history[history.length - 1];
     const updated = applyQuarterUpdate({ currentQuarter }, decisions, nextScenario);
+    const updatedEntry = {
+      ...updated,
+      quarter: nextScenario.quarter,
+      scenario: nextScenario.narrative
+    };
     setScenario(nextScenario);
     setCurrentQuarter(nextQuarter);
-    setHistory([...history, { ...updated, quarter: nextScenario.quarter, scenario: nextScenario.narrative }]);
+    setHistory([...history, updatedEntry]);
   };
 
   if (!isLoggedIn) {
@@ -62,8 +67,6 @@ function App() {
       </div>
     );
   }
-
-  const latest = history[history.length - 1];
 
   return (
     <div className="p-6 space-y-6">
