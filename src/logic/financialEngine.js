@@ -1,63 +1,48 @@
 // logic/financialEngine.js
 
-export function applyQuarterUpdate(state, decisions, scenario) {
-  const prev = state.history[state.history.length - 1];
+export function applyQuarterUpdate({ currentQuarter, history }, decisions, scenario) {
+  const last = history[history.length - 1];
+  const interestRate = Math.max(0.25, last.interestRate + decisions.rateChange + scenario.interestDrift);
 
-  // Adjust interest rate based on user decision and scenario drift
-  const interestRate = Math.max(0.1, prev.interestRate + decisions.rateChange + scenario.interestDrift);
+  // Business line revenue
+  const wmMargin = decisions.newLine === 'Wealth Management' ? 0.15 : 0;
+  const merchantCapitalDrain = decisions.newLine === 'Merchant Banking' ? 1 : 0;
+  const invBankFeeBoost = decisions.newLine === 'Investment Banking' ? 0.5 : 0;
 
-  // Loan growth factor
-  let loanGrowth = 0.01;
-  if (decisions.expansion === 'yes') loanGrowth += 0.02;
-  if (decisions.riskTolerance === 'loosen') loanGrowth += 0.015;
-  if (decisions.riskTolerance === 'tighten') loanGrowth -= 0.01;
+  const revenue = (last.loans * interestRate * 0.01) + 1.5 + invBankFeeBoost;
+  const expenses = (last.deposits * 0.01) + (last.loans * (last.operatingCostRatio / 100)) + merchantCapitalDrain;
+  const provisions = last.loans * (last.provisionRatio / 100);
+  const netIncome = revenue - expenses - provisions + (last.riaFeeIncome || 0) + (last.capital * wmMargin);
 
-  const newLoans = prev.loans * (1 + loanGrowth);
-  const newDeposits = prev.deposits * (1 + 0.005); // modest deposit growth
-  const operatingCostRatio = prev.operatingCostRatio + (decisions.expansion === 'yes' ? 1 : 0); // costs rise with expansion
+  const capital = Math.max(0, last.capital + netIncome - (merchantCapitalDrain || 0));
+  const tier1 = parseFloat(((capital / last.loans) * 100).toFixed(2));
+  const roe = parseFloat(((netIncome / capital) * 100).toFixed(2));
 
-  // Fee income effect from new line
-  let riaFeeIncome = prev.riaFeeIncome;
-  if (decisions.newLine === 'Wealth Management') riaFeeIncome += 0.2;
-  if (decisions.newLine === 'Investment Banking') riaFeeIncome += 0.3;
-  if (decisions.newLine === 'Merchant Banking') riaFeeIncome += 0.25;
-
-  // Income estimate
-  const interestIncome = newLoans * (interestRate / 100) / 4; // quarterly
-  const interestExpense = newDeposits * ((interestRate - 1) / 100) / 4;
-  const netInterestIncome = interestIncome - interestExpense;
-  const netIncome = parseFloat((netInterestIncome + riaFeeIncome - (operatingCostRatio / 100) * newLoans / 4).toFixed(2));
-
-  const capital = parseFloat((prev.capital + netIncome * 0.8).toFixed(2)); // assume 20% dividend payout
-  const tier1 = parseFloat(((capital / newLoans) * 100).toFixed(2));
-  const roe = parseFloat(((netIncome / capital) * 100).toFixed(1)); // assume net income is quarterly annualized
-
-  // Generate feedback
-  let feedback = '';
-  if (roe > 10) {
-    feedback = 'Strong performance this quarter, driven by effective strategy and margin expansion.';
-  } else if (roe < 5) {
-    feedback = 'Returns are under pressure. Consider cost controls or strategic repositioning.';
-  } else {
-    feedback = 'Steady quarter. Results were solid but not exceptional.';
-  }
-
-  if (scenario.shock) {
-    feedback += ` ${scenario.shockImpact}`;
-  }
+  const year = 2025 + Math.floor((currentQuarter + 1) / 4);
 
   return {
-    year: 2025 + Math.floor((state.currentQuarter + 1) / 4),
-    capital,
-    loans: parseFloat(newLoans.toFixed(1)),
-    deposits: parseFloat(newDeposits.toFixed(1)),
+    year,
+    capital: parseFloat(capital.toFixed(2)),
+    loans: last.loans + (decisions.expansion === 'yes' ? 5 : 0),
+    deposits: last.deposits + 3,
     interestRate: parseFloat(interestRate.toFixed(2)),
-    operatingCostRatio,
-    provisionRatio: prev.provisionRatio,
-    riaFeeIncome: parseFloat(riaFeeIncome.toFixed(2)),
+    operatingCostRatio: last.operatingCostRatio,
+    provisionRatio: last.provisionRatio,
+    riaFeeIncome: last.riaFeeIncome + (decisions.newLine === 'Wealth Management' ? 0.3 : 0),
     tier1,
     roe,
-    netIncome,
-    feedback,
+    netIncome: parseFloat(netIncome.toFixed(2)),
+    revenue: parseFloat(revenue.toFixed(2)),
+    expenses: parseFloat(expenses.toFixed(2)),
+    provisions: parseFloat(provisions.toFixed(2)),
+    boardFeedback: generateBoardFeedback(roe, tier1),
+    scenarioNotes: scenario.shock ? scenario.shockImpact : ''
   };
+}
+
+function generateBoardFeedback(roe, tier1) {
+  if (roe > 12 && tier1 > 12) return "Excellent performance — ROE and capital strong. Keep this momentum.";
+  if (roe < 4) return "Profitability is weak. Board suggests reassessing risk or operating costs.";
+  if (tier1 < 8) return "Tier 1 capital is under pressure. Consider reducing loan growth or raising capital.";
+  return "Performance is steady. Continue monitoring margins and capital trends.";
 }
