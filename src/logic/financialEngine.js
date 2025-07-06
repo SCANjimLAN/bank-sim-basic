@@ -1,66 +1,80 @@
 // src/logic/financialEngine.js
 
-export function applyQuarterUpdate(prevState, decisions, scenario) {
-  const { financials } = prevState;
+export function applyQuarterUpdate(state, decisions, scenario) {
+  const prev = state.financials;
 
-  // Destructure economic inputs
-  const { gdpGrowth, inflation, interestRate, riskEnvironment } = scenario;
+  // --- Base financials ---
+  let capital = prev.capital;
+  let loans = prev.loans;
+  let deposits = prev.deposits;
+  let interestRate = parseFloat(prev.interestRate);
+  let riaFeeIncome = prev.riaFeeIncome;
+  let operatingCostRatio = prev.operatingCostRatio;
+  let provisionRatio = prev.provisionRatio;
 
-  // Apply decision effects
-  const rateChange = parseFloat(decisions.rateChange || 0);
-  const launchedLine = decisions.newLine;
-  const expanded = decisions.expansion || false;
-  const risk = decisions.riskTolerance || 'maintain';
+  // --- Adjust interest rate if changed ---
+  const rateDelta = parseFloat(decisions.rateChange || 0);
+  interestRate = Math.max(0, interestRate + rateDelta);
 
-  // New financials (copied from prior quarter)
-  const next = { ...financials };
-
-  // --- Simulate Income Statement ---
-  let incomeDelta = 0;
-  let costDelta = 0;
-
-  // Interest income effect
-  next.interestRate = financials.interestRate + rateChange;
-  incomeDelta += rateChange * 2; // Simplified: 25bps = +0.5M
-
-  // Business line adds fee income
-  if (launchedLine && launchedLine !== 'None') {
-    incomeDelta += 1.0;
+  // --- Apply business line expansion ---
+  if (decisions.newLine && decisions.newLine !== 'None') {
+    riaFeeIncome += 0.2; // modest boost for fee income
+    operatingCostRatio += 1.5; // cost to stand up new line
   }
 
-  // Expansion increases both income and cost
-  if (expanded === 'yes') {
-    incomeDelta += 0.5;
-    costDelta += 0.3;
+  // --- Expansion effects ---
+  if (decisions.expansion === 'yes') {
+    loans *= 1.025;
+    deposits *= 1.015;
+    operatingCostRatio += 0.5;
   }
 
-  // Risk tolerance may affect provisions
-  if (risk === 'tighten') {
-    next.provisionRatio = financials.provisionRatio - 0.2;
-  } else if (risk === 'loosen') {
-    next.provisionRatio = financials.provisionRatio + 0.3;
+  // --- Risk tolerance adjustments ---
+  if (decisions.riskTolerance === 'loosen') {
+    loans *= 1.03;
+    provisionRatio += 0.3;
+  } else if (decisions.riskTolerance === 'tighten') {
+    loans *= 0.985;
+    provisionRatio -= 0.3;
   }
 
-  // GDP effect on loan growth
-  next.loans += Math.max(0, gdpGrowth / 2); // eg: 2% GDP = +1M loans
+  // --- Economic conditions ---
+  const macroMultiplier = 1 + scenario.gdpGrowth / 100;
+  loans *= macroMultiplier;
+  deposits *= macroMultiplier;
 
-  // Expense changes
-  next.operatingCostRatio += costDelta;
+  // --- Simplified income calculation ---
+  const interestIncome = loans * (interestRate / 100) * 0.25;
+  const interestExpense = deposits * ((interestRate - 1) / 100) * 0.25;
+  const netInterestIncome = interestIncome - interestExpense;
 
-  // Net income update (simplified)
-  next.netIncome = parseFloat((financials.netIncome + incomeDelta - costDelta).toFixed(2));
+  const fees = riaFeeIncome;
+  const provisions = (provisionRatio / 100) * loans;
+  const operatingCosts = (operatingCostRatio / 100) * (loans + deposits) * 0.01;
+  const netIncome = parseFloat((netInterestIncome + fees - provisions - operatingCosts).toFixed(2));
 
-  // ROE updated
-  next.roe = parseFloat((next.netIncome / (next.capital || 1) * 100).toFixed(2));
+  // --- Capital grows with net income (retained) ---
+  capital += netIncome * 0.25;
 
-  // Tier 1 changes slightly with earnings
-  next.tier1 = parseFloat((financials.tier1 + (next.netIncome * 0.1)).toFixed(2));
+  // --- Ratios ---
+  const tier1 = parseFloat(((capital / riskWeightedAssets(loans)) * 100).toFixed(2));
+  const roe = parseFloat(((netIncome / capital) * 100).toFixed(1));
 
-  // Capital increases with retained earnings
-  next.capital = parseFloat((financials.capital + next.netIncome * 0.5).toFixed(2));
+  return {
+    year: 2025 + Math.floor((state.currentQuarter + 1) / 4),
+    capital: parseFloat(capital.toFixed(2)),
+    loans: parseFloat(loans.toFixed(2)),
+    deposits: parseFloat(deposits.toFixed(2)),
+    interestRate: parseFloat(interestRate.toFixed(2)),
+    operatingCostRatio: parseFloat(operatingCostRatio.toFixed(1)),
+    provisionRatio: parseFloat(provisionRatio.toFixed(1)),
+    riaFeeIncome: parseFloat(riaFeeIncome.toFixed(2)),
+    tier1,
+    roe,
+    netIncome,
+  };
+}
 
-  // Save quarter tag
-  next.quarter = scenario.quarter;
-
-  return next;
+function riskWeightedAssets(loans) {
+  return loans * 0.85; // Simplified RWA factor
 }
