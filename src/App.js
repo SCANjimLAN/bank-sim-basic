@@ -1,3 +1,5 @@
+// bank_simulation_app: Game Version - Robust Simulation with Decisions
+
 import React, { useState } from 'react';
 
 const initialState = {
@@ -27,6 +29,7 @@ const nationalIronInitialFinancials = {
 export default function BankSimulationApp() {
   const [state, setState] = useState(initialState);
   const [username, setUsername] = useState('');
+  const [decision, setDecision] = useState({ rateChange: '0', newLine: '' });
 
   const handleLogin = () => {
     if (username.trim()) {
@@ -42,10 +45,16 @@ export default function BankSimulationApp() {
   const advanceQuarter = () => {
     if (state.currentQuarter < state.totalQuarters - 1) {
       const nextQuarter = state.currentQuarter + 1;
+      const updatedDecisions = [...state.decisions, { quarter: state.currentQuarter + 1, ...decision }];
+
+      // Reset decisions and update state
+      setDecision({ rateChange: '0', newLine: '' });
+
       setState({
         ...state,
         currentQuarter: nextQuarter,
         economicNarrative: `Q${(nextQuarter % 4) + 1} ${2025 + Math.floor(nextQuarter / 4)}: Economic scenario evolves (randomized). Make strategic decisions to grow or defend.`,
+        decisions: updatedDecisions,
         // Future: update financials based on decisions
       });
     } else {
@@ -86,11 +95,38 @@ export default function BankSimulationApp() {
           <li>Return on Equity (ROE): {state.financials.roe}%</li>
           <li>Net Income: ${state.financials.netIncome}M</li>
         </ul>
-        <button onClick={advanceQuarter} style={{ marginTop: '20px', padding: '10px 20px' }}>
-          Advance to Next Quarter
+
+        <h3 style={{ marginTop: '20px' }}>Choose your actions this quarter:</h3>
+        <div style={{ marginBottom: '10px' }}>
+          <label>Adjust loan interest rate: </label>
+          <select
+            value={decision.rateChange}
+            onChange={(e) => setDecision({ ...decision, rateChange: e.target.value })}
+          >
+            <option value="0">No change</option>
+            <option value="0.25">Increase by 25bps</option>
+            <option value="-0.25">Decrease by 25bps</option>
+          </select>
+        </div>
+
+        <div style={{ marginBottom: '20px' }}>
+          <label>Launch new business line: </label>
+          <select
+            value={decision.newLine}
+            onChange={(e) => setDecision({ ...decision, newLine: e.target.value })}
+          >
+            <option value="">None</option>
+            <option value="Wealth Management">Wealth Management</option>
+            <option value="Merchant Banking">Merchant Banking</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Investment Banking">Investment Banking</option>
+          </select>
+        </div>
+
+        <button onClick={advanceQuarter} style={{ padding: '10px 20px' }}>
+          Submit Decisions and Advance
         </button>
       </div>
     </div>
   );
 }
-
