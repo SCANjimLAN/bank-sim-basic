@@ -1,49 +1,87 @@
-// logic/economicScenarios.js
+const baseScenarios = [
+  {
+    quarter: 'Q1 2025',
+    gdpGrowth: 2.1,
+    inflation: 3.0,
+    unemployment: 4.2,
+    shock: null,
+    narrative: 'The economy begins the year with steady growth and controlled inflation. Consumer confidence is high.'
+  },
+  {
+    quarter: 'Q2 2025',
+    gdpGrowth: 2.8,
+    inflation: 3.5,
+    unemployment: 4.0,
+    shock: 'Inverted Yield Curve',
+    narrative: 'Yield curve inversion causes investor caution. Long-term rates dip unexpectedly.'
+  },
+  {
+    quarter: 'Q3 2025',
+    gdpGrowth: 1.5,
+    inflation: 4.1,
+    unemployment: 4.5,
+    shock: null,
+    narrative: 'Growth moderates as inflation ticks up. Some volatility in capital markets.'
+  },
+  {
+    quarter: 'Q4 2025',
+    gdpGrowth: -0.8,
+    inflation: 2.9,
+    unemployment: 5.2,
+    shock: 'Geopolitical Crisis',
+    narrative: 'A geopolitical event rattles markets and consumer sentiment. Lending slows.'
+  },
+  {
+    quarter: 'Q1 2026',
+    gdpGrowth: 0.2,
+    inflation: 2.0,
+    unemployment: 5.5,
+    shock: null,
+    narrative: 'The economy teeters near recession. Central bank signals dovish stance.'
+  },
+  {
+    quarter: 'Q2 2026',
+    gdpGrowth: 3.0,
+    inflation: 1.9,
+    unemployment: 5.0,
+    shock: 'Regulatory Overhaul',
+    narrative: 'New banking regulations increase capital requirements. Margins tighten temporarily.'
+  },
+  {
+    quarter: 'Q3 2026',
+    gdpGrowth: 3.5,
+    inflation: 2.5,
+    unemployment: 4.4,
+    shock: null,
+    narrative: 'The economy rebounds sharply. Loan demand rises and credit quality improves.'
+  },
+  {
+    quarter: 'Q4 2026',
+    gdpGrowth: 4.0,
+    inflation: 2.7,
+    unemployment: 4.1,
+    shock: 'Tech Bubble Correction',
+    narrative: 'A sharp correction in tech stocks causes temporary panic in markets.'
+  },
+  {
+    quarter: 'Q1 2027',
+    gdpGrowth: 2.3,
+    inflation: 3.0,
+    unemployment: 4.3,
+    shock: null,
+    narrative: 'Stabilization continues. Corporate borrowing remains strong.'
+  },
+  {
+    quarter: 'Q2 2027',
+    gdpGrowth: -1.0,
+    inflation: 2.2,
+    unemployment: 5.6,
+    shock: 'Regional Bank Run',
+    narrative: 'A sudden bank run hits a peer bank, triggering liquidity stress industry-wide.'
+  },
+  // Add more if desired
+];
 
 export function generateScenario(index) {
-  const quarter = `Q${(index % 4) + 1} ${2025 + Math.floor(index / 4)}`;
-
-  const baseNarratives = [
-    "The Fed holds rates steady amid soft-landing hopes.",
-    "Volatility rises on global trade tensions.",
-    "Strong job growth fuels moderate inflation.",
-    "Consumer confidence declines as credit tightens.",
-    "Markets stabilize following energy price shocks.",
-    "Liquidity improves with easing Fed policy.",
-    "Regional banks face pressure on deposits.",
-    "Technology sector rallies, boosting equities.",
-    "Commercial real estate worries resurface.",
-    "Inflation fears mount with rising wages.",
-  ];
-
-  const shocks = [
-    null,
-    {
-      label: "Interest Rate Spike",
-      shockImpact: "Unexpected rate hike by the Fed impacts borrowing demand.",
-      interestDrift: 1.0,
-    },
-    {
-      label: "Deposit Flight",
-      shockImpact: "Depositors move to money markets, straining funding.",
-      interestDrift: -0.5,
-    },
-    {
-      label: "Regulatory Crackdown",
-      shockImpact: "Increased compliance costs affect profitability.",
-      interestDrift: 0.1,
-    },
-    null,
-    null,
-  ];
-
-  const shockEvent = shocks[Math.floor(Math.random() * shocks.length)];
-
-  return {
-    quarter,
-    narrative: baseNarratives[index % baseNarratives.length],
-    interestDrift: shockEvent?.interestDrift || (Math.random() - 0.5) * 0.4, // ±0.2 typical drift
-    shock: !!shockEvent,
-    shockImpact: shockEvent?.shockImpact || '',
-  };
+  return baseScenarios[index % baseScenarios.length];
 }
