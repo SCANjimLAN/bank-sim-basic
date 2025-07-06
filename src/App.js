@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import { generateScenario } from './logic/economicScenarios';
 import { applyQuarterUpdate } from './logic/financialEngine';
+import { getScorecard } from './logic/scorecard';
+import { getCompetitors } from './logic/competitors';
+import { generateFeedback } from './logic/boardroomFeedback';
+import Dashboard from './components/Dashboard';
 
 export default function App() {
   const [username, setUsername] = useState('');
@@ -11,18 +15,16 @@ export default function App() {
     expansion: 'no',
     riskTolerance: 'maintain',
     newLine: '',
-    costAdjustment: 0,
+    operatingCosts: 60,
   });
   const [financials, setFinancials] = useState([]);
-  const [feedback, setFeedback] = useState('');
   const [scenario, setScenario] = useState(null);
+  const [feedback, setFeedback] = useState('');
+  const [scorecard, setScorecard] = useState({});
+  const [competitors, setCompetitors] = useState(getCompetitors());
 
   const handleLogin = () => {
     if (!username) return;
-    const firstScenario = generateScenario(0);
-    setScenario(firstScenario);
-    setIsLoggedIn(true);
-
     const initial = {
       year: 2025,
       capital: 32,
@@ -35,37 +37,38 @@ export default function App() {
       tier1: 14.5,
       roe: 7.7,
       netIncome: 2.5,
-      revenue: 5.2,
-      expenses: 2.7,
-      assets: 132,
-      liabilities: 100,
-      boardroom: 'The board is optimistic about a strong start.',
-      competitors: [
-        { name: 'MetroBank', roe: 8.1 },
-        { name: 'Founders Capital', roe: 6.5 }
-      ],
-      feedback: 'You begin the decade with a strong foundation and steady economic conditions.',
+      aum: 100,
+      ibRevenue: 0,
+      mbAssets: 0,
     };
+    const firstScenario = generateScenario(0);
     setFinancials([initial]);
+    setScenario(firstScenario);
+    setIsLoggedIn(true);
+    setScorecard(getScorecard([initial]));
   };
 
   const advanceQuarter = () => {
     const nextIndex = currentQuarter + 1;
     const nextScenario = generateScenario(nextIndex);
-    const newData = applyQuarterUpdate(
+
+    const result = applyQuarterUpdate(
       { currentQuarter, history: financials },
       decisions,
       nextScenario
     );
 
-    setFinancials([...financials, newData]);
+    const newHistory = [...financials, result];
+    setFinancials(newHistory);
     setScenario(nextScenario);
-    setFeedback(newData.feedback);
+    setFeedback(generateFeedback(result, decisions));
     setCurrentQuarter(nextIndex);
+    setScorecard(getScorecard(newHistory));
+    setCompetitors(getCompetitors(nextIndex));
   };
 
   const handleDecisionChange = (field, value) => {
-    setDecisions(prev => ({ ...prev, [field]: value }));
+    setDecisions((prev) => ({ ...prev, [field]: value }));
   };
 
   if (!isLoggedIn) {
@@ -95,53 +98,54 @@ export default function App() {
 
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
-      {/* Economic Narrative */}
+      {/* Quarter Narrative */}
       <div className="border p-4 rounded shadow space-y-2">
         <h2 className="text-2xl font-semibold">{scenario?.quarter}</h2>
         <p className="text-sm">{scenario?.narrative}</p>
       </div>
 
-      {/* Strategic Controls */}
+      {/* Dashboard */}
+      <Dashboard data={latest} />
+
+      {/* Strategic Decisions */}
       <div className="border p-4 rounded shadow space-y-4">
         <h3 className="text-xl font-bold">Strategic Decisions</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div>
-            <label>Change Base Interest Rate (±2%)</label>
+            <label className="block">Base Rate Change (±%)</label>
             <input
               className="border p-2 w-full"
               type="number"
               step="0.25"
               value={decisions.rateChange}
-              onChange={(e) =>
-                handleDecisionChange('rateChange', parseFloat(e.target.value))
-              }
+              onChange={(e) => handleDecisionChange('rateChange', parseFloat(e.target.value))}
             />
           </div>
           <div>
-            <label>Expansion Strategy</label>
+            <label className="block">Expansion</label>
             <select
               className="border p-2 w-full"
               value={decisions.expansion}
               onChange={(e) => handleDecisionChange('expansion', e.target.value)}
             >
-              <option value="no">No Expansion</option>
-              <option value="yes">Expand Operations</option>
+              <option value="no">None</option>
+              <option value="yes">Expand Branches</option>
             </select>
           </div>
           <div>
-            <label>Risk Appetite</label>
+            <label className="block">Risk Appetite</label>
             <select
               className="border p-2 w-full"
               value={decisions.riskTolerance}
               onChange={(e) => handleDecisionChange('riskTolerance', e.target.value)}
             >
               <option value="maintain">Maintain</option>
-              <option value="loosen">Loosen</option>
               <option value="tighten">Tighten</option>
+              <option value="loosen">Loosen</option>
             </select>
           </div>
           <div>
-            <label>New Business Line</label>
+            <label className="block">New Business Line</label>
             <select
               className="border p-2 w-full"
               value={decisions.newLine}
@@ -154,15 +158,12 @@ export default function App() {
             </select>
           </div>
           <div>
-            <label>Cost Structure Adjustment (±10%)</label>
+            <label className="block">Target Operating Cost Ratio (%)</label>
             <input
               className="border p-2 w-full"
               type="number"
-              step="1"
-              value={decisions.costAdjustment}
-              onChange={(e) =>
-                handleDecisionChange('costAdjustment', parseFloat(e.target.value))
-              }
+              value={decisions.operatingCosts}
+              onChange={(e) => handleDecisionChange('operatingCosts', parseFloat(e.target.value))}
             />
           </div>
         </div>
@@ -174,89 +175,49 @@ export default function App() {
         </button>
       </div>
 
+      {/* Scorecard */}
+      <div className="border p-4 rounded shadow">
+        <h3 className="text-xl font-semibold mb-2">Performance Scorecard</h3>
+        <ul className="grid grid-cols-2 md:grid-cols-3 gap-2 text-sm">
+          <li>Avg ROE: {scorecard.avgROE?.toFixed(2)}%</li>
+          <li>Tier 1 Cap: {latest.tier1}%</li>
+          <li>AUM: ${latest.aum}M</li>
+          <li>IB Revenue: ${latest.ibRevenue}M</li>
+          <li>MB Assets: ${latest.mbAssets}M</li>
+        </ul>
+      </div>
+
       {/* Boardroom Feedback */}
       <div className="border p-4 rounded shadow">
-        <h3 className="text-xl font-bold">Boardroom Feedback</h3>
-        <p className="text-sm">{latest.boardroom}</p>
+        <h3 className="text-xl font-semibold mb-2">Boardroom Feedback</h3>
+        <p className="text-sm">{feedback}</p>
       </div>
-
-      {/* KPI & Financials */}
-      <div className="border p-4 rounded shadow">
-        <h3 className="text-xl font-bold">Key Financials</h3>
-        <ul className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <li>Capital: ${latest.capital}M</li>
-          <li>Loans: ${latest.loans}M</li>
-          <li>Deposits: ${latest.deposits}M</li>
-          <li>Net Income: ${latest.netIncome}M</li>
-          <li>ROE: {latest.roe}%</li>
-          <li>Tier 1 Capital: {latest.tier1}%</li>
-          <li>Operating Ratio: {latest.operatingCostRatio}%</li>
-          <li>Provision Ratio: {latest.provisionRatio}%</li>
-        </ul>
-      </div>
-
-      {/* Income Statement & Balance Sheet */}
-      <div className="border p-4 rounded shadow">
-        <h3 className="text-xl font-bold">Income Statement</h3>
-        <ul className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <li>Revenue: ${latest.revenue}M</li>
-          <li>Expenses: ${latest.expenses}M</li>
-          <li>Net Income: ${latest.netIncome}M</li>
-        </ul>
-        <h3 className="text-xl font-bold mt-4">Balance Sheet</h3>
-        <ul className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <li>Assets: ${latest.assets}M</li>
-          <li>Liabilities: ${latest.liabilities}M</li>
-          <li>Equity: ${latest.capital}M</li>
-        </ul>
-      </div>
-
-      {/* Quarter-over-Quarter Comparison */}
-      {previous && (
-        <div className="border p-4 rounded shadow">
-          <h3 className="text-xl font-bold">Quarter-over-Quarter Comparison</h3>
-          <ul className="grid grid-cols-1 md:grid-cols-2 gap-3">
-            <li>
-              ROE Change: {(latest.roe - previous.roe).toFixed(2)}%
-            </li>
-            <li>
-              Net Income Change: ${(latest.netIncome - previous.netIncome).toFixed(2)}M
-            </li>
-            <li>
-              Deposit Growth: ${(latest.deposits - previous.deposits).toFixed(2)}M
-            </li>
-            <li>
-              Loan Growth: ${(latest.loans - previous.loans).toFixed(2)}M
-            </li>
-          </ul>
-        </div>
-      )}
 
       {/* Competitor Benchmarking */}
       <div className="border p-4 rounded shadow">
-        <h3 className="text-xl font-bold">Competitor Benchmarking</h3>
+        <h3 className="text-xl font-semibold mb-2">Peer Bank Benchmarking</h3>
         <table className="w-full text-sm border-collapse">
           <thead>
-            <tr className="border-b">
+            <tr>
               <th className="text-left">Bank</th>
-              <th className="text-left">ROE</th>
+              <th>ROE</th>
+              <th>Tier 1</th>
+              <th>Net Income</th>
+              <th>AUM</th>
             </tr>
           </thead>
           <tbody>
-            {latest.competitors.map((comp, idx) => (
-              <tr key={idx} className="border-t">
-                <td>{comp.name}</td>
-                <td>{comp.roe}%</td>
+            {competitors.map((bank, idx) => (
+              <tr key={idx}>
+                <td>{bank.name}</td>
+                <td>{bank.roe}%</td>
+                <td>{bank.tier1}%</td>
+                <td>${bank.netIncome}M</td>
+                <td>${bank.aum}M</td>
               </tr>
             ))}
           </tbody>
         </table>
-      </div>
-
-      {/* Feedback */}
-      <div className="border p-4 rounded shadow">
-        <h3 className="text-xl font-bold">Narrative Feedback</h3>
-        <p className="text-sm">{feedback}</p>
       </div>
     </div>
   );
