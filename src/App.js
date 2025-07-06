@@ -13,7 +13,6 @@ export default function App() {
     newLine: '',
   });
   const [financials, setFinancials] = useState([]);
-  const [feedback, setFeedback] = useState('');
   const [scenario, setScenario] = useState(null);
 
   const handleLogin = () => {
@@ -34,7 +33,11 @@ export default function App() {
       tier1: 14.5,
       roe: 7.7,
       netIncome: 2.5,
-      feedback: 'Welcome to National Iron Bank. You begin the decade with a strong balance sheet and moderate profitability.',
+      revenue: 8,
+      expenses: 5,
+      provisions: 0.5,
+      boardFeedback: "Welcome to National Iron Bank. You begin the decade with a strong balance sheet and moderate profitability.",
+      scenarioNotes: '',
     };
     setFinancials([initial]);
   };
@@ -42,24 +45,18 @@ export default function App() {
   const advanceQuarter = () => {
     const nextIndex = currentQuarter + 1;
     const nextScenario = generateScenario(nextIndex);
-    const newData = applyQuarterUpdate(
-      {
-        currentQuarter,
-        history: financials,
-      },
-      decisions,
-      nextScenario
-    );
-
+    const newData = applyQuarterUpdate({ currentQuarter, history: financials }, decisions, nextScenario);
     setFinancials([...financials, newData]);
     setScenario(nextScenario);
-    setFeedback(newData.feedback);
     setCurrentQuarter(nextIndex);
   };
 
   const handleDecisionChange = (field, value) => {
     setDecisions(prev => ({ ...prev, [field]: value }));
   };
+
+  const latest = financials[financials.length - 1];
+  const previous = financials[financials.length - 2];
 
   if (!isLoggedIn) {
     return (
@@ -83,123 +80,116 @@ export default function App() {
     );
   }
 
-  const latest = financials[financials.length - 1];
-
   return (
     <div className="p-6 space-y-6 max-w-6xl mx-auto">
       <div className="border p-4 rounded shadow space-y-2">
         <h2 className="text-2xl font-semibold">{scenario?.quarter}</h2>
         <p className="text-sm">{scenario?.narrative}</p>
+        {latest.scenarioNotes && <p className="text-red-700">{latest.scenarioNotes}</p>}
+      </div>
+
+      <div className="border p-4 rounded shadow space-y-4">
+        <h3 className="text-xl font-bold">Boardroom Feedback</h3>
+        <p className="italic text-gray-700">{latest.boardFeedback}</p>
       </div>
 
       <div className="border p-4 rounded shadow space-y-4">
         <h3 className="text-xl font-bold">Strategic Decisions</h3>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block">Change Base Interest Rate (±1%)</label>
-            <input
-              className="border p-2 w-full"
-              type="number"
-              step="0.25"
-              min="-2"
-              max="2"
-              value={decisions.rateChange}
-              onChange={(e) =>
-                handleDecisionChange('rateChange', parseFloat(e.target.value))
-              }
-            />
-          </div>
-          <div>
-            <label className="block">Expansion Strategy</label>
-            <select
-              className="border p-2 w-full"
-              value={decisions.expansion}
-              onChange={(e) => handleDecisionChange('expansion', e.target.value)}
-            >
-              <option value="no">No Expansion</option>
-              <option value="yes">Expand Operations</option>
-            </select>
-          </div>
-          <div>
-            <label className="block">Risk Appetite</label>
-            <select
-              className="border p-2 w-full"
-              value={decisions.riskTolerance}
-              onChange={(e) => handleDecisionChange('riskTolerance', e.target.value)}
-            >
-              <option value="maintain">Maintain</option>
-              <option value="loosen">Loosen</option>
-              <option value="tighten">Tighten</option>
-            </select>
-          </div>
-          <div>
-            <label className="block">Launch New Business Line</label>
-            <select
-              className="border p-2 w-full"
-              value={decisions.newLine}
-              onChange={(e) => handleDecisionChange('newLine', e.target.value)}
-            >
-              <option value="">None</option>
-              <option value="Wealth Management">Wealth Management</option>
-              <option value="Investment Banking">Investment Banking</option>
-              <option value="Merchant Banking">Merchant Banking</option>
-            </select>
-          </div>
+          {['rateChange', 'expansion', 'riskTolerance', 'newLine'].map((field, i) => (
+            <div key={i}>
+              <label className="block capitalize">{field.replace(/([A-Z])/g, ' $1')}</label>
+              {field === 'rateChange' ? (
+                <input
+                  className="border p-2 w-full"
+                  type="number"
+                  value={decisions[field]}
+                  onChange={e => handleDecisionChange(field, parseFloat(e.target.value))}
+                />
+              ) : (
+                <select
+                  className="border p-2 w-full"
+                  value={decisions[field]}
+                  onChange={e => handleDecisionChange(field, e.target.value)}
+                >
+                  {field === 'expansion' && <>
+                    <option value="no">No Expansion</option>
+                    <option value="yes">Expand Operations</option>
+                  </>}
+                  {field === 'riskTolerance' && <>
+                    <option value="maintain">Maintain</option>
+                    <option value="tighten">Tighten</option>
+                    <option value="loosen">Loosen</option>
+                  </>}
+                  {field === 'newLine' && <>
+                    <option value="">None</option>
+                    <option value="Wealth Management">Wealth Management</option>
+                    <option value="Investment Banking">Investment Banking</option>
+                    <option value="Merchant Banking">Merchant Banking</option>
+                  </>}
+                </select>
+              )}
+            </div>
+          ))}
         </div>
-        <button
-          className="bg-green-600 text-white px-4 py-2 rounded mt-4"
-          onClick={advanceQuarter}
-        >
+        <button className="bg-green-600 text-white px-4 py-2 rounded" onClick={advanceQuarter}>
           Advance to Next Quarter
         </button>
       </div>
 
-      <div className="border p-4 rounded shadow space-y-4">
-        <h3 className="text-xl font-semibold">Quarterly Financial Summary</h3>
-        <ul className="grid grid-cols-2 md:grid-cols-3 gap-3">
-          <li>Capital: ${latest.capital}M</li>
-          <li>Loans: ${latest.loans}M</li>
-          <li>Deposits: ${latest.deposits}M</li>
-          <li>Interest Rate: {latest.interestRate}%</li>
-          <li>Operating Ratio: {latest.operatingCostRatio}%</li>
-          <li>Provision Ratio: {latest.provisionRatio}%</li>
-          <li>RIA Fee Income: ${latest.riaFeeIncome}M</li>
-          <li>Tier 1 Ratio: {latest.tier1}%</li>
-          <li>ROE: {latest.roe}%</li>
-          <li>Net Income: ${latest.netIncome}M</li>
-        </ul>
-        <div>
-          <strong>Quarterly Narrative:</strong>
-          <p className="text-sm">{feedback}</p>
+      <div className="border p-4 rounded shadow">
+        <h3 className="text-xl font-semibold">Quarterly Financials</h3>
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <div>Net Income: ${latest.netIncome}M</div>
+          <div>ROE: {latest.roe}%</div>
+          <div>Revenue: ${latest.revenue}M</div>
+          <div>Expenses: ${latest.expenses}M</div>
+          <div>Provisions: ${latest.provisions}M</div>
+          <div>Tier 1 Ratio: {latest.tier1}%</div>
         </div>
+        {previous && (
+          <div className="mt-4 text-sm text-gray-600">
+            <strong>QoQ Changes:</strong><br />
+            Net Income: {(latest.netIncome - previous.netIncome).toFixed(2)}M &nbsp;
+            ROE: {(latest.roe - previous.roe).toFixed(2)}% &nbsp;
+            Tier 1: {(latest.tier1 - previous.tier1).toFixed(2)}%
+          </div>
+        )}
       </div>
 
       <div className="border p-4 rounded shadow">
-        <h3 className="text-xl font-semibold mb-2">Historical Financials</h3>
+        <h3 className="text-xl font-semibold mb-2">Income Statement & Balance Sheet</h3>
         <table className="w-full text-sm border-collapse">
           <thead>
             <tr className="border-b">
-              <th className="text-left">Q</th>
-              <th className="text-left">Capital</th>
-              <th className="text-left">Loans</th>
-              <th className="text-left">Deposits</th>
-              <th className="text-left">Net Income</th>
-              <th className="text-left">ROE</th>
+              <th>Q</th><th>Revenue</th><th>Expenses</th><th>Provisions</th><th>Net Income</th><th>Capital</th><th>Loans</th><th>Deposits</th>
             </tr>
           </thead>
           <tbody>
-            {financials.map((row, idx) => (
-              <tr key={idx} className="border-t">
-                <td>{`Q${(idx % 4) + 1} ${2025 + Math.floor(idx / 4)}`}</td>
-                <td>${row.capital}</td>
-                <td>${row.loans}</td>
-                <td>${row.deposits}</td>
-                <td>${row.netIncome}</td>
-                <td>{row.roe}%</td>
+            {financials.map((q, i) => (
+              <tr key={i} className="border-t">
+                <td>{`Q${(i % 4) + 1} ${2025 + Math.floor(i / 4)}`}</td>
+                <td>${q.revenue}</td>
+                <td>${q.expenses}</td>
+                <td>${q.provisions}</td>
+                <td>${q.netIncome}</td>
+                <td>${q.capital}</td>
+                <td>${q.loans}</td>
+                <td>${q.deposits}</td>
               </tr>
             ))}
           </tbody>
         </table>
+      </div>
+
+      <div className="border p-4 rounded shadow">
+        <h3 className="text-xl font-semibold mb-2">Performance Trends</h3>
+        <div style={{ height: '150px', display: 'flex', alignItems: 'flex-end', gap: '8px' }}>
+          {financials.map((q, i) => (
+            <div key={i} style={{ height: `${q.roe * 5}px`, background: 'steelblue', width: '10px' }} title={`ROE: ${q.roe}%`} />
+          ))}
+        </div>
+        <div className="text-sm mt-2">ROE Trend (each bar = one quarter)</div>
       </div>
     </div>
   );
