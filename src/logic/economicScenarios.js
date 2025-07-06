@@ -1,61 +1,49 @@
-const scenarios = [
-  {
-    quarterIndex: 0,
-    quarter: 'Q1 2025',
-    narrative: `The economy is stabilizing after a turbulent 2024. GDP growth is modest at 1.2%, inflation is cooling, and the Fed is holding rates steady. Regulatory pressure is moderate.`,
-    loanDemandMultiplier: 1.05,
-    depositFlowModifier: 1.01,
-    provisionPressure: 1.0,
-    rateSensitivity: 1.0,
-    expensePressure: 1.0,
-  },
-  {
-    quarterIndex: 1,
-    quarter: 'Q2 2025',
-    narrative: `Unexpected inflation data spooks markets. Bond yields jump, depositors begin chasing yield, and lending slows. Regulators begin warning banks about liquidity.`,
-    loanDemandMultiplier: 0.96,
-    depositFlowModifier: 0.97,
-    provisionPressure: 1.2,
-    rateSensitivity: 1.1,
-    expensePressure: 1.05,
-  },
-  {
-    quarterIndex: 2,
-    quarter: 'Q3 2025',
-    narrative: `Economic optimism rebounds after strong tech earnings and a dovish Fed statement. Lending activity picks up, and deposit flows stabilize.`,
-    loanDemandMultiplier: 1.08,
-    depositFlowModifier: 1.02,
-    provisionPressure: 0.95,
-    rateSensitivity: 0.95,
-    expensePressure: 0.98,
-  },
-  {
-    quarterIndex: 3,
-    quarter: 'Q4 2025',
-    narrative: `A surprise geopolitical event causes a spike in oil prices. The yield curve inverts again. Regulators emphasize stress testing.`,
-    loanDemandMultiplier: 0.92,
-    depositFlowModifier: 1.05,
-    provisionPressure: 1.3,
-    rateSensitivity: 1.2,
-    expensePressure: 1.1,
-  },
-  // More quarters to be filled in later — this starts us off.
-];
+// logic/economicScenarios.js
 
-export function generateScenario(quarterIndex) {
-  const base = scenarios.find(s => s.quarterIndex === quarterIndex);
-  if (base) return base;
+export function generateScenario(index) {
+  const quarter = `Q${(index % 4) + 1} ${2025 + Math.floor(index / 4)}`;
 
-  // Default/fallback
-  const year = 2025 + Math.floor(quarterIndex / 4);
-  const quarter = `Q${(quarterIndex % 4) + 1} ${year}`;
+  const baseNarratives = [
+    "The Fed holds rates steady amid soft-landing hopes.",
+    "Volatility rises on global trade tensions.",
+    "Strong job growth fuels moderate inflation.",
+    "Consumer confidence declines as credit tightens.",
+    "Markets stabilize following energy price shocks.",
+    "Liquidity improves with easing Fed policy.",
+    "Regional banks face pressure on deposits.",
+    "Technology sector rallies, boosting equities.",
+    "Commercial real estate worries resurface.",
+    "Inflation fears mount with rising wages.",
+  ];
+
+  const shocks = [
+    null,
+    {
+      label: "Interest Rate Spike",
+      shockImpact: "Unexpected rate hike by the Fed impacts borrowing demand.",
+      interestDrift: 1.0,
+    },
+    {
+      label: "Deposit Flight",
+      shockImpact: "Depositors move to money markets, straining funding.",
+      interestDrift: -0.5,
+    },
+    {
+      label: "Regulatory Crackdown",
+      shockImpact: "Increased compliance costs affect profitability.",
+      interestDrift: 0.1,
+    },
+    null,
+    null,
+  ];
+
+  const shockEvent = shocks[Math.floor(Math.random() * shocks.length)];
+
   return {
     quarter,
-    narrative: `${quarter}: A typical quarter with no major shocks.`,
-    loanDemandMultiplier: 1.0,
-    depositFlowModifier: 1.0,
-    provisionPressure: 1.0,
-    rateSensitivity: 1.0,
-    expensePressure: 1.0,
+    narrative: baseNarratives[index % baseNarratives.length],
+    interestDrift: shockEvent?.interestDrift || (Math.random() - 0.5) * 0.4, // ±0.2 typical drift
+    shock: !!shockEvent,
+    shockImpact: shockEvent?.shockImpact || '',
   };
 }
