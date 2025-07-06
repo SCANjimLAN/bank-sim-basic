@@ -2,165 +2,205 @@ import React, { useState } from 'react';
 import { generateScenario } from './logic/economicScenarios';
 import { applyQuarterUpdate } from './logic/financialEngine';
 
-function App() {
+export default function App() {
   const [username, setUsername] = useState('');
   const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [currentQuarter, setCurrentQuarter] = useState(0);
-  const [history, setHistory] = useState([]);
-  const [scenario, setScenario] = useState(null);
   const [decisions, setDecisions] = useState({
     rateChange: 0,
     expansion: 'no',
-    riskTolerance: 'neutral',
-    newLine: 'None',
+    riskTolerance: 'maintain',
+    newLine: '',
   });
-
-  const startingFinancials = {
-    year: 2025,
-    capital: 32,
-    loans: 100,
-    deposits: 120,
-    interestRate: 4.0,
-    operatingCostRatio: 60,
-    provisionRatio: 1,
-    riaFeeIncome: 1.5,
-    tier1: 14.5,
-    roe: 7.8,
-    netIncome: 2.5,
-  };
+  const [financials, setFinancials] = useState([]);
+  const [feedback, setFeedback] = useState('');
+  const [scenario, setScenario] = useState(null);
 
   const handleLogin = () => {
+    if (!username) return;
+    const firstScenario = generateScenario(0);
+    setScenario(firstScenario);
     setIsLoggedIn(true);
-    const initialScenario = generateScenario(0);
-    setScenario(initialScenario);
-    setHistory([{ ...startingFinancials, quarter: initialScenario.quarter, scenario: initialScenario.narrative }]);
+
+    const initial = {
+      year: 2025,
+      capital: 32,
+      loans: 100,
+      deposits: 120,
+      interestRate: 4.0,
+      operatingCostRatio: 60,
+      provisionRatio: 1,
+      riaFeeIncome: 1.5,
+      tier1: 14.5,
+      roe: 7.7,
+      netIncome: 2.5,
+      feedback: 'Welcome to National Iron Bank. You begin the decade with a strong balance sheet and moderate profitability.',
+    };
+    setFinancials([initial]);
   };
 
   const advanceQuarter = () => {
-    const nextQuarter = currentQuarter + 1;
-    const nextScenario = generateScenario(nextQuarter);
-    const prev = history[history.length - 1];
-    const updated = applyQuarterUpdate({ currentQuarter }, decisions, nextScenario);
-    const updatedEntry = {
-      ...updated,
-      quarter: nextScenario.quarter,
-      scenario: nextScenario.narrative
-    };
+    const nextIndex = currentQuarter + 1;
+    const nextScenario = generateScenario(nextIndex);
+    const newData = applyQuarterUpdate(
+      {
+        currentQuarter,
+        history: financials,
+      },
+      decisions,
+      nextScenario
+    );
+
+    setFinancials([...financials, newData]);
     setScenario(nextScenario);
-    setCurrentQuarter(nextQuarter);
-    setHistory([...history, updatedEntry]);
+    setFeedback(newData.feedback);
+    setCurrentQuarter(nextIndex);
+  };
+
+  const handleDecisionChange = (field, value) => {
+    setDecisions(prev => ({ ...prev, [field]: value }));
   };
 
   if (!isLoggedIn) {
     return (
-      <div className="p-6 space-y-4">
-        <h1 className="text-2xl font-bold">Welcome to the Bank Simulation</h1>
-        <input
-          className="border p-2"
-          placeholder="Enter your name to begin"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-        />
-        <button className="bg-blue-500 text-white px-4 py-2 rounded" onClick={handleLogin}>
-          Start Simulation
-        </button>
+      <div className="p-6 max-w-xl mx-auto">
+        <div className="border p-4 rounded shadow space-y-4">
+          <h2 className="text-xl font-bold">Bank Simulation Login</h2>
+          <input
+            className="border p-2 w-full"
+            placeholder="Enter your name"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <button
+            className="bg-blue-600 text-white px-4 py-2 rounded"
+            onClick={handleLogin}
+          >
+            Start Simulation
+          </button>
+        </div>
       </div>
     );
   }
 
-  return (
-    <div className="p-6 space-y-6">
-      <h2 className="text-xl font-semibold">{scenario?.narrative}</h2>
+  const latest = financials[financials.length - 1];
 
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <h3 className="font-bold">Decisions (Quarter {currentQuarter + 1})</h3>
-          <label>
-            Interest Rate Change (%):{' '}
+  return (
+    <div className="p-6 space-y-6 max-w-6xl mx-auto">
+      <div className="border p-4 rounded shadow space-y-2">
+        <h2 className="text-2xl font-semibold">{scenario?.quarter}</h2>
+        <p className="text-sm">{scenario?.narrative}</p>
+      </div>
+
+      <div className="border p-4 rounded shadow space-y-4">
+        <h3 className="text-xl font-bold">Strategic Decisions</h3>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          <div>
+            <label className="block">Change Base Interest Rate (±1%)</label>
             <input
+              className="border p-2 w-full"
               type="number"
               step="0.25"
+              min="-2"
+              max="2"
               value={decisions.rateChange}
-              onChange={(e) => setDecisions({ ...decisions, rateChange: parseFloat(e.target.value) })}
-              className="border p-1 ml-2 w-20"
+              onChange={(e) =>
+                handleDecisionChange('rateChange', parseFloat(e.target.value))
+              }
             />
-          </label>
-          <label>
-            Expansion: {' '}
+          </div>
+          <div>
+            <label className="block">Expansion Strategy</label>
             <select
+              className="border p-2 w-full"
               value={decisions.expansion}
-              onChange={(e) => setDecisions({ ...decisions, expansion: e.target.value })}
-              className="border ml-2"
+              onChange={(e) => handleDecisionChange('expansion', e.target.value)}
             >
-              <option value="no">No</option>
-              <option value="yes">Yes</option>
+              <option value="no">No Expansion</option>
+              <option value="yes">Expand Operations</option>
             </select>
-          </label>
-          <label>
-            Risk Tolerance: {' '}
+          </div>
+          <div>
+            <label className="block">Risk Appetite</label>
             <select
+              className="border p-2 w-full"
               value={decisions.riskTolerance}
-              onChange={(e) => setDecisions({ ...decisions, riskTolerance: e.target.value })}
-              className="border ml-2"
+              onChange={(e) => handleDecisionChange('riskTolerance', e.target.value)}
             >
-              <option value="neutral">Neutral</option>
+              <option value="maintain">Maintain</option>
               <option value="loosen">Loosen</option>
               <option value="tighten">Tighten</option>
             </select>
-          </label>
-          <label>
-            New Business Line:{' '}
+          </div>
+          <div>
+            <label className="block">Launch New Business Line</label>
             <select
+              className="border p-2 w-full"
               value={decisions.newLine}
-              onChange={(e) => setDecisions({ ...decisions, newLine: e.target.value })}
-              className="border ml-2"
+              onChange={(e) => handleDecisionChange('newLine', e.target.value)}
             >
-              <option value="None">None</option>
+              <option value="">None</option>
+              <option value="Wealth Management">Wealth Management</option>
               <option value="Investment Banking">Investment Banking</option>
               <option value="Merchant Banking">Merchant Banking</option>
-              <option value="Wealth Management">Wealth Management</option>
             </select>
-          </label>
-          <button
-            className="mt-4 bg-green-600 text-white px-4 py-2 rounded"
-            onClick={advanceQuarter}
-          >
-            Advance to Next Quarter
-          </button>
+          </div>
         </div>
+        <button
+          className="bg-green-600 text-white px-4 py-2 rounded mt-4"
+          onClick={advanceQuarter}
+        >
+          Advance to Next Quarter
+        </button>
+      </div>
 
+      <div className="border p-4 rounded shadow space-y-4">
+        <h3 className="text-xl font-semibold">Quarterly Financial Summary</h3>
+        <ul className="grid grid-cols-2 md:grid-cols-3 gap-3">
+          <li>Capital: ${latest.capital}M</li>
+          <li>Loans: ${latest.loans}M</li>
+          <li>Deposits: ${latest.deposits}M</li>
+          <li>Interest Rate: {latest.interestRate}%</li>
+          <li>Operating Ratio: {latest.operatingCostRatio}%</li>
+          <li>Provision Ratio: {latest.provisionRatio}%</li>
+          <li>RIA Fee Income: ${latest.riaFeeIncome}M</li>
+          <li>Tier 1 Ratio: {latest.tier1}%</li>
+          <li>ROE: {latest.roe}%</li>
+          <li>Net Income: ${latest.netIncome}M</li>
+        </ul>
         <div>
-          <h3 className="font-bold">Quarterly Financial Summary</h3>
-          <table className="border mt-2 w-full text-sm">
-            <thead className="bg-gray-200">
-              <tr>
-                <th className="border px-2 py-1">Quarter</th>
-                <th className="border px-2 py-1">Net Income</th>
-                <th className="border px-2 py-1">ROE</th>
-                <th className="border px-2 py-1">Tier 1</th>
-                <th className="border px-2 py-1">Loans</th>
-                <th className="border px-2 py-1">Deposits</th>
-                <th className="border px-2 py-1">Capital</th>
-              </tr>
-            </thead>
-            <tbody>
-              {history.map((h, idx) => (
-                <tr key={idx}>
-                  <td className="border px-2 py-1">{h.quarter}</td>
-                  <td className="border px-2 py-1">${h.netIncome}M</td>
-                  <td className="border px-2 py-1">{h.roe}%</td>
-                  <td className="border px-2 py-1">{h.tier1}%</td>
-                  <td className="border px-2 py-1">${h.loans}M</td>
-                  <td className="border px-2 py-1">${h.deposits}M</td>
-                  <td className="border px-2 py-1">${h.capital}M</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+          <strong>Quarterly Narrative:</strong>
+          <p className="text-sm">{feedback}</p>
         </div>
+      </div>
+
+      <div className="border p-4 rounded shadow">
+        <h3 className="text-xl font-semibold mb-2">Historical Financials</h3>
+        <table className="w-full text-sm border-collapse">
+          <thead>
+            <tr className="border-b">
+              <th className="text-left">Q</th>
+              <th className="text-left">Capital</th>
+              <th className="text-left">Loans</th>
+              <th className="text-left">Deposits</th>
+              <th className="text-left">Net Income</th>
+              <th className="text-left">ROE</th>
+            </tr>
+          </thead>
+          <tbody>
+            {financials.map((row, idx) => (
+              <tr key={idx} className="border-t">
+                <td>{`Q${(idx % 4) + 1} ${2025 + Math.floor(idx / 4)}`}</td>
+                <td>${row.capital}</td>
+                <td>${row.loans}</td>
+                <td>${row.deposits}</td>
+                <td>${row.netIncome}</td>
+                <td>{row.roe}%</td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </div>
     </div>
   );
 }
-
-export default App;
