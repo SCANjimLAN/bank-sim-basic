@@ -1,63 +1,179 @@
-// src/logic/financialEngine.js
+import React, { useState } from 'react';
+import { generateScenario } from './logic/economicScenarios';
+import { applyQuarterUpdate } from './logic/financialEngine';
 
-export function applyQuarterUpdate(prevState, decisions, scenario) {
-  const { financials } = prevState;
+const initialState = {
+  isLoggedIn: false,
+  currentQuarter: 0,
+  totalQuarters: 40,
+  economicNarrative: '',
+  financials: null,
+  history: [],
+  decisions: [],
+  showSimulation: false,
+};
 
-  // Destructure economic inputs
-  const { gdpGrowth, inflation, interestRate, riskEnvironment } = scenario;
+const nationalIronInitialFinancials = {
+  year: 2024,
+  capital: 10,
+  loans: 100,
+  deposits: 120,
+  interestRate: 4.0,
+  operatingCostRatio: 60,
+  provisionRatio: 1,
+  riaFeeIncome: 1.5,
+  tier1: 14.5,
+  roe: 7.8,
+  netIncome: 2.5,
+};
 
-  // Decisions
-  const rateChange = parseFloat(decisions.rateChange || 0);
-  const launchedLine = decisions.newLine;
-  const expanded = decisions.expansion || false;
-  const risk = decisions.riskTolerance || 'maintain';
+function BankSimulationApp() {
+  const [state, setState] = useState(initialState);
+  const [username, setUsername] = useState('');
+  const [decisionInputs, setDecisionInputs] = useState({
+    rateChange: '0',
+    newLine: 'None',
+    expansion: 'no',
+    riskTolerance: 'maintain',
+  });
 
-  // Clone financials for update
-  const next = { ...financials };
+  const handleLogin = () => {
+    if (username.trim()) {
+      const initialScenario = generateScenario(0);
+      setState({
+        ...state,
+        isLoggedIn: true,
+        economicNarrative: initialScenario.narrative,
+        financials: nationalIronInitialFinancials,
+        history: [nationalIronInitialFinancials],
+      });
+    }
+  };
 
-  // === Simulate Economic Impact ===
-  let incomeDelta = 0;
-  let costDelta = 0;
+  const handleDecisionChange = (e) => {
+    const { name, value } = e.target;
+    setDecisionInputs({
+      ...decisionInputs,
+      [name]: value,
+    });
+  };
 
-  // Interest income impact
-  next.interestRate = financials.interestRate + rateChange;
-  incomeDelta += rateChange * 2; // 0.25% = $0.5M (example scaling)
+  const advanceQuarter = () => {
+    const nextQuarter = state.currentQuarter + 1;
+    if (nextQuarter >= state.totalQuarters) {
+      alert('Simulation complete! You have finished 10 years.');
+      return;
+    }
 
-  // New business line
-  if (launchedLine && launchedLine !== 'None') {
-    incomeDelta += 1.0; // Basic assumed $1M annualized contribution
+    const scenario = generateScenario(nextQuarter);
+    const updatedFinancials = applyQuarterUpdate(state, decisionInputs, scenario);
+
+    setState({
+      ...state,
+      currentQuarter: nextQuarter,
+      economicNarrative: scenario.narrative,
+      financials: updatedFinancials,
+      history: [...state.history, updatedFinancials],
+      decisions: [...state.decisions, decisionInputs],
+    });
+
+    // Reset form
+    setDecisionInputs({
+      rateChange: '0',
+      newLine: 'None',
+      expansion: 'no',
+      riskTolerance: 'maintain',
+    });
+  };
+
+  if (!state.isLoggedIn) {
+    return (
+      <div className="p-6 space-y-4">
+        <div className="bg-white shadow p-4 rounded-md">
+          <h2 className="text-xl font-bold mb-2">Bank Simulation Login</h2>
+          <input
+            className="border p-2 w-full"
+            placeholder="Enter your name to begin"
+            value={username}
+            onChange={(e) => setUsername(e.target.value)}
+          />
+          <button onClick={handleLogin} className="bg-blue-600 text-white mt-2 px-4 py-2 rounded">
+            Start Simulation
+          </button>
+        </div>
+      </div>
+    );
   }
 
-  // Expansion increases both income and cost
-  if (expanded === 'yes') {
-    incomeDelta += 0.5;
-    costDelta += 0.3;
-  }
+  return (
+    <div className="p-6 space-y-6">
+      <div className="bg-white shadow p-4 rounded-md">
+        <h2 className="text-xl font-semibold mb-2">Quarter {state.currentQuarter + 1} Economic Narrative</h2>
+        <p>{state.economicNarrative}</p>
+      </div>
 
-  // Risk tolerance adjusts provisioning
-  if (risk === 'tighten') {
-    next.provisionRatio = Math.max(0, financials.provisionRatio - 0.2);
-  } else if (risk === 'loosen') {
-    next.provisionRatio = financials.provisionRatio + 0.3;
-  }
+      <div className="bg-white shadow p-4 rounded-md">
+        <h3 className="text-lg font-bold mb-2">National Iron Bank KPIs</h3>
+        <ul className="list-disc list-inside">
+          <li>Capital: ${state.financials.capital}M</li>
+          <li>Loans: ${state.financials.loans}M</li>
+          <li>Deposits: ${state.financials.deposits}M</li>
+          <li>Interest Rate: {state.financials.interestRate}%</li>
+          <li>Operating Cost Ratio: {state.financials.operatingCostRatio}%</li>
+          <li>Provision Ratio: {state.financials.provisionRatio}%</li>
+          <li>Tier 1 Capital Ratio: {state.financials.tier1}%</li>
+          <li>Return on Equity (ROE): {state.financials.roe}%</li>
+          <li>Net Income (Annualized): ${state.financials.netIncome}M</li>
+        </ul>
+      </div>
 
-  // GDP impact on loan growth
-  next.loans += Math.max(0, gdpGrowth / 2); // +1M for 2% GDP
+      <div className="bg-white shadow p-4 rounded-md space-y-4">
+        <h3 className="text-lg font-semibold">Make Strategic Decisions</h3>
+        <label>
+          Interest Rate Change (%):
+          <input
+            type="number"
+            name="rateChange"
+            value={decisionInputs.rateChange}
+            onChange={handleDecisionChange}
+            className="border ml-2 p-1 w-20"
+          />
+        </label>
 
-  // Update net income (assumed annualized)
-  next.netIncome = parseFloat((financials.netIncome + incomeDelta - costDelta).toFixed(2));
+        <label>
+          New Business Line:
+          <select name="newLine" value={decisionInputs.newLine} onChange={handleDecisionChange} className="ml-2 p-1 border">
+            <option value="None">None</option>
+            <option value="Wealth Management">Wealth Management</option>
+            <option value="Investment Banking">Investment Banking</option>
+            <option value="Insurance">Insurance</option>
+            <option value="Merchant Banking">Merchant Banking</option>
+          </select>
+        </label>
 
-  // ROE — based on capital, assuming net income is already annualized
-  next.roe = parseFloat((next.netIncome / (next.capital || 1) * 100).toFixed(2));
+        <label>
+          Expansion:
+          <select name="expansion" value={decisionInputs.expansion} onChange={handleDecisionChange} className="ml-2 p-1 border">
+            <option value="no">No</option>
+            <option value="yes">Yes</option>
+          </select>
+        </label>
 
-  // Tier 1 adjustment from retained earnings
-  next.tier1 = parseFloat((financials.tier1 + (next.netIncome * 0.1)).toFixed(2));
+        <label>
+          Risk Tolerance:
+          <select name="riskTolerance" value={decisionInputs.riskTolerance} onChange={handleDecisionChange} className="ml-2 p-1 border">
+            <option value="tighten">Tighten</option>
+            <option value="maintain">Maintain</option>
+            <option value="loosen">Loosen</option>
+          </select>
+        </label>
 
-  // Capital increases with retained earnings
-  next.capital = parseFloat((financials.capital + next.netIncome * 0.5).toFixed(2));
-
-  // Quarter label
-  next.quarter = scenario.quarter;
-
-  return next;
+        <button onClick={advanceQuarter} className="bg-green-600 text-white px-4 py-2 rounded">
+          Advance to Next Quarter
+        </button>
+      </div>
+    </div>
+  );
 }
+
+export default BankSimulationApp;
