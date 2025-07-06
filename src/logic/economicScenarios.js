@@ -1,51 +1,61 @@
-// src/logic/economicScenarios.js
+const scenarios = [
+  {
+    quarterIndex: 0,
+    quarter: 'Q1 2025',
+    narrative: `The economy is stabilizing after a turbulent 2024. GDP growth is modest at 1.2%, inflation is cooling, and the Fed is holding rates steady. Regulatory pressure is moderate.`,
+    loanDemandMultiplier: 1.05,
+    depositFlowModifier: 1.01,
+    provisionPressure: 1.0,
+    rateSensitivity: 1.0,
+    expensePressure: 1.0,
+  },
+  {
+    quarterIndex: 1,
+    quarter: 'Q2 2025',
+    narrative: `Unexpected inflation data spooks markets. Bond yields jump, depositors begin chasing yield, and lending slows. Regulators begin warning banks about liquidity.`,
+    loanDemandMultiplier: 0.96,
+    depositFlowModifier: 0.97,
+    provisionPressure: 1.2,
+    rateSensitivity: 1.1,
+    expensePressure: 1.05,
+  },
+  {
+    quarterIndex: 2,
+    quarter: 'Q3 2025',
+    narrative: `Economic optimism rebounds after strong tech earnings and a dovish Fed statement. Lending activity picks up, and deposit flows stabilize.`,
+    loanDemandMultiplier: 1.08,
+    depositFlowModifier: 1.02,
+    provisionPressure: 0.95,
+    rateSensitivity: 0.95,
+    expensePressure: 0.98,
+  },
+  {
+    quarterIndex: 3,
+    quarter: 'Q4 2025',
+    narrative: `A surprise geopolitical event causes a spike in oil prices. The yield curve inverts again. Regulators emphasize stress testing.`,
+    loanDemandMultiplier: 0.92,
+    depositFlowModifier: 1.05,
+    provisionPressure: 1.3,
+    rateSensitivity: 1.2,
+    expensePressure: 1.1,
+  },
+  // More quarters to be filled in later — this starts us off.
+];
 
-export function generateScenario(quarter) {
-  const year = 2025 + Math.floor(quarter / 4);
-  const q = (quarter % 4) + 1;
+export function generateScenario(quarterIndex) {
+  const base = scenarios.find(s => s.quarterIndex === quarterIndex);
+  if (base) return base;
 
-  const scenarios = [
-    {
-      gdpGrowth: 2.0,
-      inflation: 3.0,
-      interestRate: 4.0,
-      riskEnvironment: 'stable',
-      narrative: `Q${q} ${year}: The economy is growing steadily. Inflation is under control and consumer confidence remains strong.`,
-    },
-    {
-      gdpGrowth: -1.0,
-      inflation: 4.2,
-      interestRate: 5.5,
-      riskEnvironment: 'elevated',
-      narrative: `Q${q} ${year}: The economy has contracted slightly. Inflation remains stubborn and central banks are holding rates high.`,
-    },
-    {
-      gdpGrowth: 3.5,
-      inflation: 2.1,
-      interestRate: 3.25,
-      riskEnvironment: 'improving',
-      narrative: `Q${q} ${year}: A surprise boost in productivity and consumer spending is accelerating the recovery.`,
-    },
-    {
-      gdpGrowth: 0.5,
-      inflation: 5.8,
-      interestRate: 6.0,
-      riskEnvironment: 'uncertain',
-      narrative: `Q${q} ${year}: Inflation is climbing again, creating policy uncertainty. Growth is sluggish.`,
-    },
-    {
-      gdpGrowth: -2.0,
-      inflation: 1.8,
-      interestRate: 2.75,
-      riskEnvironment: 'recessionary',
-      narrative: `Q${q} ${year}: A mild recession is underway. Rates are falling, but loan demand is weakening.`,
-    },
-  ];
-
-  const chosen = scenarios[Math.floor(Math.random() * scenarios.length)];
+  // Default/fallback
+  const year = 2025 + Math.floor(quarterIndex / 4);
+  const quarter = `Q${(quarterIndex % 4) + 1} ${year}`;
   return {
-    ...chosen,
-    year,
-    quarter: `Q${q} ${year}`,
+    quarter,
+    narrative: `${quarter}: A typical quarter with no major shocks.`,
+    loanDemandMultiplier: 1.0,
+    depositFlowModifier: 1.0,
+    provisionPressure: 1.0,
+    rateSensitivity: 1.0,
+    expensePressure: 1.0,
   };
 }
